@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tropical DC Analytics Dashboard | Prototype</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Modern CSS Variables & Reset */
+        :root {
+            --bg-body: #eceff1;
+            --bg-card: #ffffff;
+            --primary: #004d40;
+            --accent: #00bfa5;
+            --text-main: #263238;
+            --text-muted: #78909c;
+            --danger: #e53935;
+            --warning: #ffb300;
+            --success: #43a047;
+            --border: #cfd8dc;
+            --shadow: 0 4px 6px rgba(0,0,0,0.05);
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            padding: 20px;
+        }
+
+        /* Layout Grid */
+        .dashboard {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            gap: 20px;
+            grid-template-columns: 250px 1fr;
+        }
+
+        /* Sidebar / Controls */
+        .sidebar {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .brand h2 {
+            color: var(--primary);
+            font-size: 1.2rem;
+            margin-bottom: 5px;
+        }
+        .brand p { font-size: 0.85rem; color: var(--text-muted); }
+
+        .control-group { margin-top: 10px; }
+        .control-group label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: var(--primary);
+        }
+        .control-group input[type="range"] {
+            width: 100%;
+            accent-color: var(--accent);
+        }
+        .val-display { float: right; font-weight: normal; color: var(--text-muted); }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+            margin-top: 10px;
+        }
+        .btn:hover { background: var(--accent); }
+        .btn.danger { background: var(--warning); color: #000; }
+        .btn.danger:hover { background: var(--danger); color: #fff; }
+
+        /* Main Content Area */
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Top KPIs */
+        .kpi-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+        }
+        .kpi-card {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            border-left: 5px solid var(--primary);
+            position: relative;
+        }
+        .kpi-card.alert { border-left-color: var(--danger); }
+        .kpi-title { font-size: 0.9rem; color: var(--text-muted); font-weight: bold; text-transform: uppercase;}
+        .kpi-value { font-size: 2.2rem; font-weight: bold; margin-top: 5px; color: var(--text-main); }
+        .kpi-sub { font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;}
+
+        /* Charts Area */
+        .charts-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+        }
+        .chart-container {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            position: relative;
+            height: 350px;
+        }
+        .chart-container h3 { margin-bottom: 15px; font-size: 1.1rem; color: var(--primary); }
+
+        /* Alerts Panel */
+        .alerts-panel {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: var(--shadow);
+            height: 250px;
+            overflow-y: auto;
+        }
+        .alerts-panel h3 { margin-bottom: 15px; color: var(--primary); }
+        .alert-item {
+            padding: 10px;
+            border-left: 4px solid var(--warning);
+            background: #fff8e1;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        .alert-item.critical { border-left-color: var(--danger); background: #ffebee; }
+        .alert-time { font-weight: bold; margin-right: 10px; color: var(--text-muted); }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .dashboard { grid-template-columns: 1fr; }
+            .charts-row { grid-template-columns: 1fr; }
+            .kpi-row { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="dashboard">
+    <aside class="sidebar">
+        <div class="brand">
+            <h2></h2>
+            <p>Facility: Kuala Lumpur DC-01</p>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid var(--border);">
+
+        <div class="control-group">
+            <label>Target PUE Threshold <span class="val-display" id="val-target-pue">1.50</span></label>
+            <input type="range" id="sim-target-pue" min="1.1" max="2.0" step="0.01" value="1.50">
+        </div>
+
+        <div class="control-group">
+            <label>KL Ambient Temp (°C) <span class="val-display" id="val-temp">32</span></label>
+            <input type="range" id="sim-temp" min="24" max="40" value="32">
+        </div>
+
+        <div class="control-group">
+            <label>KL Humidity (%) <span class="val-display" id="val-hum">80</span></label>
+            <input type="range" id="sim-hum" min="50" max="100" value="80">
+        </div>
+
+        <button class="btn" id="btn-load">Simulate High Server Load</button>
+        <button class="btn danger" id="btn-heatwave">Simulate Heatwave</button>
+    </aside>
+
+    <main class="main-content">
+        
+        <div class="kpi-row">
+            <div class="kpi-card" id="card-pue">
+                <div class="kpi-title">Current PUE</div>
+                <div class="kpi-value" id="kpi-pue">1.42</div>
+                <div class="kpi-sub" id="sub-pue">Target: < 1.50</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-title">Current WUE (L/kWh)</div>
+                <div class="kpi-value" id="kpi-wue">1.85</div>
+                <div class="kpi-sub">Tropical Baseline: ~1.8 - 2.2</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-title">Total Power Usage (kW)</div>
+                <div class="kpi-value" id="kpi-power">850</div>
+                <div class="kpi-sub">IT + HVAC Load</div>
+            </div>
+            <div class="kpi-card" id="card-alerts">
+                <div class="kpi-title">Active Warnings</div>
+                <div class="kpi-value" id="kpi-alerts-count">0</div>
+                <div class="kpi-sub">Requires attention</div>
+            </div>
+        </div>
+
+        <div class="charts-row">
+            <div class="chart-container">
+                <h3>Power Consumption Breakdown</h3>
+                <canvas id="powerChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <h3>PUE & WUE Trends</h3>
+                <canvas id="efficiencyChart"></canvas>
+            </div>
+        </div>
+
+        <div class="alerts-panel" id="alerts-log">
+            <h3>System Diagnostics & Alerts</h3>
+            <div style="color: var(--text-muted); font-size: 0.9rem;">System monitoring active...</div>
+        </div>
+
+    </main>
+</div>
+
+<script>
+    // --- State & Data Simulation ---
+    let timeLabels = Array.from({length: 20}, (_, i) => `T-${20-i}s`);
+    let dataIT = Array(20).fill(500);
+    let dataHVAC = Array(20).fill(250);
+    let dataPUE = Array(20).fill(1.5);
+    let dataWUE = Array(20).fill(1.8);
+    
+    let baseITLoad = 500;
+    let targetPUE = 1.50;
+    let alertCount = 0;
+
+    // --- DOM Elements ---
+    const uiPUE = document.getElementById('kpi-pue');
+    const uiWUE = document.getElementById('kpi-wue');
+    const uiPower = document.getElementById('kpi-power');
+    const uiAlertsCount = document.getElementById('kpi-alerts-count');
+    const cardPUE = document.getElementById('card-pue');
+    const cardAlerts = document.getElementById('card-alerts');
+    const alertsLog = document.getElementById('alerts-log');
+
+    // Controls
+    const simTemp = document.getElementById('sim-temp');
+    const simHum = document.getElementById('sim-hum');
+    const simTargetPUE = document.getElementById('sim-target-pue');
+
+    // Update Slider Labels
+    simTemp.oninput = (e) => document.getElementById('val-temp').innerText = e.target.value;
+    simHum.oninput = (e) => document.getElementById('val-hum').innerText = e.target.value;
+    simTargetPUE.oninput = (e) => {
+        targetPUE = parseFloat(e.target.value);
+        document.getElementById('val-target-pue').innerText = targetPUE.toFixed(2);
+        document.getElementById('sub-pue').innerText = `Target: < ${targetPUE.toFixed(2)}`;
+    };
+
+    // Buttons
+    document.getElementById('btn-load').onclick = () => { baseITLoad = 800; addAlert('High Server Load Detected', 'warning'); setTimeout(() => baseITLoad = 500, 10000); };
+    document.getElementById('btn-heatwave').onclick = () => { simTemp.value = 39; simTemp.dispatchEvent(new Event('input')); simHum.value = 95; simHum.dispatchEvent(new Event('input')); addAlert('Extreme Weather Protocol Activated', 'critical'); };
+
+    // --- Chart Configurations ---
+    Chart.defaults.font.family = "'Segoe UI', system-ui, sans-serif";
+    Chart.defaults.color = "#78909c";
+
+    const powerCtx = document.getElementById('powerChart').getContext('2d');
+    const powerChart = new Chart(powerCtx, {
+        type: 'line',
+        data: {
+            labels: timeLabels,
+            datasets: [
+                { label: 'HVAC Power (kW)', data: dataHVAC, borderColor: '#00bfa5', backgroundColor: 'rgba(0, 191, 165, 0.2)', fill: true, tension: 0.4 },
+                { label: 'IT Power (kW)', data: dataIT, borderColor: '#004d40', backgroundColor: 'rgba(0, 77, 64, 0.2)', fill: true, tension: 0.4 }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: { y: { stacked: true, min: 0, max: 1500 } },
+            plugins: { legend: { position: 'top' } },
+            animation: { duration: 0 } // Smooth real-time feel
+        }
+    });
+
+    const effCtx = document.getElementById('efficiencyChart').getContext('2d');
+    const effChart = new Chart(effCtx, {
+        type: 'line',
+        data: {
+            labels: timeLabels,
+            datasets: [
+                { label: 'PUE', data: dataPUE, borderColor: '#ffb300', tension: 0.4, yAxisID: 'y' },
+                { label: 'WUE (L/kWh)', data: dataWUE, borderColor: '#1e88e5', tension: 0.4, yAxisID: 'y1' }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: {
+                y: { type: 'linear', display: true, position: 'left', min: 1.0, max: 2.5 },
+                y1: { type: 'linear', display: true, position: 'right', min: 0, max: 4.0, grid: { drawOnChartArea: false } }
+            },
+            animation: { duration: 0 }
+        }
+    });
+
+    // --- Core Logic & Data Loop ---
+    function addAlert(msg, type) {
+        const time = new Date().toLocaleTimeString();
+        const div = document.createElement('div');
+        div.className = `alert-item ${type}`;
+        div.innerHTML = `<span class="alert-time">[${time}]</span> ${msg}`;
+        alertsLog.prepend(div);
+        alertCount++;
+        uiAlertsCount.innerText = alertCount;
+        cardAlerts.classList.add('alert');
+    }
+
+    setInterval(() => {
+        // Read environments
+        let temp = parseFloat(simTemp.value);
+        let hum = parseFloat(simHum.value);
+
+        // Simulate Data
+        let currentIT = baseITLoad + (Math.random() * 50 - 25);
+        
+        // HVAC load heavily influenced by Tropical heat/humidity + IT Load
+        let weatherFactor = ((temp - 24) * 5) + ((hum - 50) * 2);
+        let currentHVAC = (currentIT * 0.4) + weatherFactor + (Math.random() * 20);
+
+        let totalPower = currentIT + currentHVAC;
+        let currentPUE = totalPower / currentIT;
+        
+        // Water usage jumps significantly as heat/humidity rises to cool chillers
+        let waterUsage = currentHVAC * 2.5 + (hum * 0.5); 
+        let currentWUE = waterUsage / currentIT;
+
+        // Update Arrays
+        dataIT.shift(); dataIT.push(currentIT);
+        dataHVAC.shift(); dataHVAC.push(currentHVAC);
+        dataPUE.shift(); dataPUE.push(currentPUE);
+        dataWUE.shift(); dataWUE.push(currentWUE);
+
+        // Update Charts
+        powerChart.update();
+        effChart.update();
+
+        // Update DOM KPIs
+        uiPUE.innerText = currentPUE.toFixed(2);
+        uiWUE.innerText = currentWUE.toFixed(2);
+        uiPower.innerText = totalPower.toFixed(0);
+
+        // Threshold Logic
+        if (currentPUE > targetPUE) {
+            uiPUE.style.color = 'var(--danger)';
+            cardPUE.classList.add('alert');
+            if (Math.random() > 0.8) {
+                addAlert(`PUE (${currentPUE.toFixed(2)}) exceeded target threshold (${targetPUE.toFixed(2)}). Cooling inefficiency detected.`, 'warning');
+            }
+        } else {
+            uiPUE.style.color = 'var(--text-main)';
+            cardPUE.classList.remove('alert');
+        }
+
+    }, 2000); // Updates every 2 seconds
+
+</script>
+</body>
+</html>
